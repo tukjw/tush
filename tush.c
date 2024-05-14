@@ -12,11 +12,11 @@
 #define NORMAL_MODE 0
 #define BACKGROUND_MODE 1
 #define BATCH_MODE 2
+#define REDIRECTION 3
 
-#define REDIRECTION_INPUT 0
-#define REDIRECTION_OUTPUT 1
-#define REDIRECTION_APPEND 2
-
+#define REDIRECTION_INPUT 1
+#define REDIRECTION_OUTPUT 2
+#define REDIRECTION_APPEND 3
 
 int main(int argc, char *argv[]){
     char input[BUF_SIZE];
@@ -26,8 +26,10 @@ int main(int argc, char *argv[]){
     char *token;
     char abspath[BUF_SIZE] = "/bin/";
     int args_count;
-    int mode;
-    
+    int mode=-1;
+    int redirection_mode=-1;
+
+
     while(1){
         printf("tush> ");
         fgets(input, sizeof(input), stdin);
@@ -51,7 +53,10 @@ int main(int argc, char *argv[]){
         else
             mode = NORMAL_MODE;
             
-        printf("%d\n", mode);
+        
+        mode = REDIRECTION;
+        redirection_mode = REDIRECTION_APPEND;
+        printf("MODE : %d\n", mode);
 
 
         //프로세스 실행하는부분
@@ -61,8 +66,21 @@ int main(int argc, char *argv[]){
             fputs("fork 에러 발생\n", stderr);
 
         else if (pid==0){
-            // close(STDOUT_FILENO);
-            // open("test.txt", O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+            
+            if (mode==REDIRECTION){ // 리다이렉션일때
+                switch(redirection_mode){
+                case REDIRECTION_OUTPUT:
+                    close(STDOUT_FILENO);
+                    open("test.txt", O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+                    break;
+                case REDIRECTION_APPEND:
+                    close(STDOUT_FILENO);
+                    open("test.txt", O_CREAT|O_WRONLY|O_APPEND, S_IRWXU);
+                    break;
+                default:
+                    break;
+                }
+            }
             execvp(args[0], args);
             fputs("child 프로세스 error\n", stderr);
         }
