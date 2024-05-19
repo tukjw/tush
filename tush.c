@@ -31,7 +31,7 @@ void printArgs(char**args){
     printf("NULL]\n");
 }
 
-/* 리다이렉션 모드인지 확인 (문자열에 '<' 기호 또는 '>' 가 들어가면 리다이렉션 모드로봄) */
+/* 리다이렉션 모드인지 확인 */
 int isRedirectionMode(char *input){
     int i;
     for(i=0;input[i]!='\0';i++){
@@ -73,7 +73,7 @@ void specialSplit(char *input, char **commands, char *special){
 void process_run(char **args, int mode){
         pid_t pid = fork();
         int status;
-        
+
         if (pid < 0){
             fputs("fork 에러 발생\n", stderr);
         }
@@ -154,8 +154,8 @@ int main(int argc, char *argv[]){
         specialSplit(input, commands, "&");
         
         /* Args 확인 (테스트용) */
-        printf("command ");
-        printArgs(commands);
+        // printf("command ");
+        // printArgs(commands);
 
         /* &기호를 기준으로 로 토큰을 나눴을때 명령어 갯수*/
         command_count = getArgsCount(commands);
@@ -163,9 +163,9 @@ int main(int argc, char *argv[]){
         /* 명령어가 단일일 경우 (중간에 &기호가 없는경우) */
         /* 내장명령어, 리다이렉션 모두 단일 명령어에서 실행 */
         if ( (command_count==1) && (lastCharacter!='&')){
-            printf("case 1 ");
             specialSplit(commands[0], args, " ");
-            printArgs(args);
+            // printf("case 1 ");
+            // printArgs(args);
 
             /* 내장 명령어인지 확인겸 실행하고, 아닐시 외부 명령어 실행*/
             if (!internalCommand(args)){
@@ -176,9 +176,9 @@ int main(int argc, char *argv[]){
 
         /* 명령어가 단일이며 &로 끝나는 경우 */
         else if ( (command_count==1) && (lastCharacter=='&')){
-            printf("case 2 ");
             specialSplit(commands[0], args, " ");
-            printArgs(args);
+            // printf("case 2 ");
+            // printArgs(args);
             process_run(args, BACKGROUND_MODE);
         }
 
@@ -186,8 +186,8 @@ int main(int argc, char *argv[]){
         else if ((command_count>=2) && (lastCharacter!='&')){
             for (int i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
-                printf("case 3 ");
-                printArgs(args);
+                // printf("case 3 ");
+                // printArgs(args);
 
                 /* 마지막 명령어 이전까지는 BACKGROUND로 실행, 마지막 명령어는 일반으로 실행*/
                 if (i<command_count-1)
@@ -202,8 +202,8 @@ int main(int argc, char *argv[]){
         else if ((command_count>=2) && (lastCharacter=='&')){
             for (int i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
-                printf("case 4 ");
-                printArgs(args);
+                // printf("case 4 ");
+                // printArgs(args);
                 process_run(args, BACKGROUND_MODE);
             }
         }
