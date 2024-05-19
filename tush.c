@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/wait.h>  // 추가된 헤더 파일
+#include <sys/wait.h>
 
 /* 최대 글자 수, 최대 명령어 갯수 설정 */
 #define BUF_SIZE 400
@@ -120,18 +120,13 @@ int internalCommand(char **args){
 
 int main(int argc, char *argv[]){
     char input[BUF_SIZE];
-
     char *commands[BUF_SIZE];
     int command_count;
-
     char *token;
     char path[BUF_SIZE] = "/bin";
     int mode=0;
     int redirection_mode=0;
-
     char lastCharacter;
-
-
     int args_count;
     char *args[MAX_ARGS];
 
@@ -147,7 +142,7 @@ int main(int argc, char *argv[]){
         input[strlen(input)-1] = '\0';
         lastCharacter = getLastCharacter(input);
 
-        /* 리다이렉션 모드인지 확인 */
+        /* TODO 리다이렉션 모드인지 확인 */
         mode = isRedirectionMode(input);
 
         /* 사용자의 명령어를 &기호로 나눔 */
@@ -164,8 +159,6 @@ int main(int argc, char *argv[]){
         /* 내장명령어, 리다이렉션 모두 단일 명령어에서 실행 */
         if ( (command_count==1) && (lastCharacter!='&')){
             specialSplit(commands[0], args, " ");
-            // printf("case 1 ");
-            // printArgs(args);
 
             /* 내장 명령어인지 확인겸 실행하고, 아닐시 외부 명령어 실행*/
             if (!internalCommand(args)){
@@ -177,8 +170,6 @@ int main(int argc, char *argv[]){
         /* 명령어가 단일이며 &로 끝나는 경우 */
         else if ( (command_count==1) && (lastCharacter=='&')){
             specialSplit(commands[0], args, " ");
-            // printf("case 2 ");
-            // printArgs(args);
             process_run(args, BACKGROUND_MODE);
         }
 
@@ -186,8 +177,6 @@ int main(int argc, char *argv[]){
         else if ((command_count>=2) && (lastCharacter!='&')){
             for (int i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
-                // printf("case 3 ");
-                // printArgs(args);
 
                 /* 마지막 명령어 이전까지는 BACKGROUND로 실행, 마지막 명령어는 일반으로 실행*/
                 if (i<command_count-1)
@@ -202,8 +191,6 @@ int main(int argc, char *argv[]){
         else if ((command_count>=2) && (lastCharacter=='&')){
             for (int i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
-                // printf("case 4 ");
-                // printArgs(args);
                 process_run(args, BACKGROUND_MODE);
             }
         }
