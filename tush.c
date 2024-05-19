@@ -5,9 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-/* strtok 함수 사용법 참고 : https://hackerpark.tistory.com/entry/C%EC%96%B8%EC%96%B4-strtok-%ED%95%A8%EC%88%98-%EB%AC%B8%EC%9E%90%EC%97%B4-%EC%9E%90%EB%A5%B4%EA%B8%B0 */
-
+#include <sys/wait.h>  // 추가된 헤더 파일
 
 /* 최대 글자 수, 최대 명령어 갯수 설정 */
 #define BUF_SIZE 400
@@ -33,25 +31,14 @@ void printArgs(char**args){
     printf("NULL]\n");
 }
 
-/* 모드 선택기 */
-int modeSelector(char *input){
-
-    int ampersand_count = 0;
+/* 리다이렉션 모드인지 확인 (문자열에 '<' 기호 또는 '>' 가 들어가면 리다이렉션 모드로봄) */
+int isRedirectionMode(char *input){
     int i;
-
-    for(i=0;input[i]!=0;i++){
-
+    for(i=0;input[i]!='\0';i++){
         if(input[i]=='<' || input[i]=='>')
-            return REDIRECTION_MODE;
-
-        if(input[i]=='&')
-            ampersand_count++;
+            return 1;
     }
-
-    if (ampersand_count==0) return NORMAL_MODE;
-    else if ((ampersand_count==1) && (input[i-1]=='&')) return BACKGROUND_MODE;
-    else return PARALLEL_MODE;
-
+    return 0;
 }
 
 /* args의 갯수 (NULL까지 몇개 있는지 확인하기 위함) */
@@ -69,6 +56,7 @@ char getLastCharacter(char* str){
 }
 
 /* input에서 speicla로 입력받은 문자열을 기준으로 쪼개서 매개변수로받은 commands에 저장함 */
+/* strtok 함수 사용법 참고 : https://hackerpark.tistory.com/entry/C%EC%96%B8%EC%96%B4-strtok-%ED%95%A8%EC%88%98-%EB%AC%B8%EC%9E%90%EC%97%B4-%EC%9E%90%EB%A5%B4%EA%B8%B0 */
 void specialSplit(char *input, char **commands, char *special){
     char *token;
     int command_count = 0;
@@ -81,10 +69,11 @@ void specialSplit(char *input, char **commands, char *special){
     commands[command_count] = NULL;
 }
 
+/* 프로세스 실행하는부분 */
 void process_run(char **args, int mode){
-        /* 프로세스 실행하는부분 */
         pid_t pid = fork();
-
+        int status;
+        
         if (pid < 0){
             fputs("fork 에러 발생\n", stderr);
         }
@@ -92,6 +81,7 @@ void process_run(char **args, int mode){
         else if (pid==0){ // 자식프로세스
             execvp(args[0], args);
             fputs("child process error\n", stderr);
+            exit(1);
         }
 
         else { // 부모 프로세스
@@ -99,7 +89,8 @@ void process_run(char **args, int mode){
                 printf("child process PID : %d\n", pid);
             }
             else{
-                wait(NULL);
+                /* 자식 프로세스가 종료될때까지 wait함 */
+                waitpid(pid, &status, 0);
             }
         }
 }
@@ -156,19 +147,21 @@ int main(int argc, char *argv[]){
         input[strlen(input)-1] = '\0';
         lastCharacter = getLastCharacter(input);
 
-        /* 모드 리턴 (입력한 것에 따라서) */
-        mode = modeSelector(input);
+        /* 리다이렉션 모드인지 확인 */
+        mode = isRedirectionMode(input);
 
+        /* 사용자의 명령어를 &기호로 나눔 */
         specialSplit(input, commands, "&");
         
-        /* Args 확인 */
+        /* Args 확인 (테스트용) */
         printf("command ");
         printArgs(commands);
 
-        /*&기호로*/
+        /* &기호를 기준으로 로 토큰을 나눴을때 명령어 갯수*/
         command_count = getArgsCount(commands);
 
         /* 명령어가 단일일 경우 (중간에 &기호가 없는경우) */
+        /* 내장명령어, 리다이렉션 모두 단일 명령어에서 실행 */
         if ( (command_count==1) && (lastCharacter!='&')){
             printf("case 1 ");
             specialSplit(commands[0], args, " ");
@@ -178,6 +171,7 @@ int main(int argc, char *argv[]){
             if (!internalCommand(args)){
                 process_run(args, NORMAL_MODE);
             }
+
         }
 
         /* 명령어가 단일이며 &로 끝나는 경우 */
