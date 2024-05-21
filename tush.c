@@ -118,6 +118,35 @@ int internalCommand(char **args){
         return 0;
 }
 
+void batchMode(char **argv){
+    // batch mode 변수
+    int fd;
+    char test[BUF_SIZE];
+    int str_len;
+    char *commands[BUF_SIZE];
+    int command_count;
+    char *args[MAX_ARGS];
+    int i;
+
+    fd = open(argv[1], O_RDONLY);
+
+    if(fd<0) {
+        fprintf(stderr, "\"%s\" open error\n", argv[1]);
+        exit(1);
+    }
+
+    str_len = read(fd, test, sizeof(test));
+    test[str_len]=0;
+    specialSplit(test, commands, "\n");
+    command_count = getArgsCount(commands);
+
+    for(i=0;commands[i]!=NULL;i++){
+        specialSplit(commands[i], args, " ");
+        // printArgs(args);
+        process_run(args, NORMAL_MODE);
+    }
+}
+
 int main(int argc, char *argv[]){
     char input[BUF_SIZE];
     char *commands[BUF_SIZE];
@@ -129,10 +158,22 @@ int main(int argc, char *argv[]){
     char lastCharacter;
     int args_count;
     char *args[MAX_ARGS];
+    int i;
 
-    /* TODO 배치모드 (파일내용에 있는 명령어들 실행) */
+    // batch mode 변수
+    int fd;
+    char test[BUF_SIZE];
+    int str_len;
+
+    /* 배치모드 (파일내용에 있는 명령어들 실행) */
     if (argc==2) {
-        
+        batchMode(argv);
+        exit(1);
+    }
+
+    else if (argc > 2){
+        printf("파일은 한개만 입력해주세요!\n");
+        exit(1);
     }
 
     while(1){
@@ -175,7 +216,7 @@ int main(int argc, char *argv[]){
 
         /* command_count가 2 이상이며, input의 마지막 문자는 &기호가 아닌 경우 */
         else if ((command_count>=2) && (lastCharacter!='&')){
-            for (int i = 0; i < command_count; i++) {
+            for (i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
 
                 /* 마지막 명령어 이전까지는 BACKGROUND로 실행, 마지막 명령어는 일반으로 실행*/
@@ -189,7 +230,7 @@ int main(int argc, char *argv[]){
         /* command_count가 2 이상이며, input의 마지막 문자는 &기호 일 경우 */
         /* 모든 명령어를 백그라운드로 실행 */
         else if ((command_count>=2) && (lastCharacter=='&')){
-            for (int i = 0; i < command_count; i++) {
+            for (i = 0; i < command_count; i++) {
                 specialSplit(commands[i], args, " ");
                 process_run(args, BACKGROUND_MODE);
             }
