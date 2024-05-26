@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <ctype.h>
+
+/* path, 입력 리다이렉션 남음 */
 
 /* 최대 글자 수, 최대 명령어 갯수 설정 */
 #define BUF_SIZE 400
@@ -31,8 +34,6 @@ void printArgs(char**args){
     printf("NULL]\n");
 }
 
-
-
 /* args의 갯수 (NULL까지 몇개 있는지 확인하기 위함) */
 int getArgsCount(char **args){
     int i = 0;
@@ -48,18 +49,43 @@ char getLastCharacter(char* str){
 }
 
 /* 문자열 공백 제거 함수 */
-/* 참고 : https://m.blog.naver.com/coding-abc/221781138470 , 수정*/
-char* DeleteSpace(char *s)
-{
-    char* str = (char*)malloc(strlen(s) + 1);
-    int i, k = 0;
+/* 참고 : https://www.dotnetnote.com/docs/c-language/topics/string-trim/  */
 
-    for (i = 0; i < strlen(s); i++)
-        if (s[i] != ' ') str[k++] = s[i];
-
-    str[k] = '\0';
+// trim_left 함수: 문자열의 왼쪽 공백을 제거
+char* trim_left(char* str) {
+    while (*str) {
+        if (isspace(*str)) {
+            str++;
+        }
+        else {
+            break;
+        }
+    }
     return str;
 }
+
+// trim_right 함수: 문자열의 오른쪽 공백을 제거
+char* trim_right(char* str) {
+    int len = (int)strlen(str) - 1;
+
+    while (len >= 0) {
+        if (isspace(*(str + len))) {
+            len--;
+        }
+        else {
+            break;
+        }
+    }
+    *(str + ++len) = '\0';
+    return str;
+}
+
+// trim 함수: 문자열의 양쪽 공백을 제거
+char* trim(char* str) {
+    return trim_left(trim_right(str));
+}
+
+
 
 /* input에서 speicla로 입력받은 문자열을 기준으로 쪼개서 매개변수로받은 commands에 저장함 */
 /* strtok 함수 사용법 참고 : https://hackerpark.tistory.com/entry/C%EC%96%B8%EC%96%B4-strtok-%ED%95%A8%EC%88%98-%EB%AC%B8%EC%9E%90%EC%97%B4-%EC%9E%90%EB%A5%B4%EA%B8%B0 */
@@ -76,26 +102,51 @@ void specialSplit(char *input, char **commands, char *special){
 }
 
 /* 프로세스 실행하는부분 */
-void process_run(char **args, int mode){
+void process_run(char **args, int mode, int redirection_mode){
         pid_t pid = fork();
         int status;
+
+        char *t_args[MAX_ARGS];
+        char *tt_args[MAX_ARGS];
 
         if (pid < 0){
             fputs("fork 에러 발생\n", stderr);
         }
+        
+        /* 자식 프로세스 */
+        else if (pid==0){
+            
+            if (redirection_mode==REDIRECTION_OUTPUT||redirection_mode==REDIRECTION_APPEND){
+                /* OUTPUT REDIRECTION */
+                /* args[0] : 명령어 / args[1] : 파일이름 */
 
-        else if (pid==0){ // 자식프로세스
-            execvp(args[0], args);
-            fputs("child process error\n", stderr);
-            exit(1);
+                printf("output\n");
+                close(STDOUT_FILENO);
+                if (redirection_mode == REDIRECTION_OUTPUT)
+                    open(args[1], O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+                else if (redirection_mode == REDIRECTION_APPEND)
+                    open(args[1], O_CREAT|O_WRONLY|O_APPEND, S_IRWXU);
+
+                specialSplit(args[0], t_args, " ");
+                execvp(t_args[0], t_args);
+                fputs("child process error\n", stderr);
+                exit(1);
+            }
+
+            else{
+                execvp(args[0], args);
+                fputs("child process error\n", stderr);
+                exit(1);
+            }
         }
 
-        else { // 부모 프로세스
+        /* 부모 프로세스 */
+        else {
             if (mode==BACKGROUND_MODE) {
                 printf("child process PID : %d\n", pid);
             }
             else{
-                /* 자식 프로세스가 종료될때까지 wait함 */
+                /* 백그라운드모드가 아니면 자식 프로세스가 종료될때까지 wait함 */
                 waitpid(pid, &status, 0);
             }
         }
@@ -117,43 +168,41 @@ int isRedirectionMode(char *input){
     return 0;
 }
 
-/* 리다이렉션 실행 */
-/* 구현중 */
-void redirectionProcessrun(char *input, int redirection_mode, int run_mode){
-	char *args[MAX_ARGS];
-	printf("리다이렉션 모드 실행\n");
-	
-	if (redirection_mode==REDIRECTION_OUTPUT){
-		printf("output\n");
-		specialSplit(input, args, ">");
-		printArgs(args);
-		process_run(args, run_mode);
-	}
+/* input을 리다이렉션 구분자를 기준으로 args에 [명령어/파일이름/NULL] 형태로 저장함 */
+void redirectionSplit(char *input, char **args, int redirection_mode){
+    char *pt;
+    if (redirection_mode==REDIRECTION_OUTPUT)
+        specialSplit(input, args, ">");
+    else if (redirection_mode==REDIRECTION_APPEND)
+        specialSplit(input, args, ">>");
+    else if (redirection_mode==REDIRECTION_INPUT)
+        specialSplit(input, args, "<");
 
-	else if (redirection_mode==REDIRECTION_APPEND){
-		printf("append\n");
-		specialSplit(input, args, ">");
-		printArgs(args);
-	}
-	
+    args[0] = trim(args[0]);
+    args[1] = trim(args[1]);
+    args[2] = NULL;
+    
+    printArgs(args);
+}
 
-	/* TODO 리다이렉션 input 구현해야함 */
-	else if (redirection_mode==REDIRECTION_INPUT){
-		printf("input\n");
-	}
+/* 내장명령어 인지 확인 */
+int isInternalMode(char **args){
+    char *internalCommands[3] = {"cd", "exit", "path"};
 
-	printArgs(args);
+    for(int i=0;i<3;i++){
+        if (!strcmp(args[0], internalCommands[i])) return 1;
+    }
+
+    return 0;
 }
 
 
-
-/* 내부 명령어인지 확인하고 내부명령어 일시 명령어를 실행 () */
-int internalCommand(char **args){
+/* 내장명령어 실행 */
+void internalCommandRun(char **args){
     /* chdir 참고 : https://hackingis.art/30 */
     if(!strcmp(args[0], "cd")){
         if (chdir(args[1])!=0)
             fputs("Failed change directory!\n", stderr);
-        return 1;
     }
     
     else if(!strcmp(args[0], "exit")){
@@ -163,11 +212,7 @@ int internalCommand(char **args){
     // TODO path 내장명령어 만들기
     else if(!strcmp(args[0], "path")){
         
-        return 1;
     }
-
-    else
-        return 0;
 }
 
 void batchMode(char **argv){
@@ -194,7 +239,7 @@ void batchMode(char **argv){
     for(i=0;commands[i]!=NULL;i++){
         specialSplit(commands[i], args, " ");
         // printArgs(args);
-        process_run(args, NORMAL_MODE);
+        process_run(args, NORMAL_MODE, 0);
     }
 }
 
@@ -206,15 +251,11 @@ int main(int argc, char *argv[]){
     char path[BUF_SIZE] = "/bin";
     int mode=0;
     int redirection_mode=0;
+    int internal_mode = 0;
     char lastCharacter;
     int args_count;
     char *args[MAX_ARGS];
     int i;
-
-    // TODO
-    // char test[BUF_SIZE] = "가      나   다   라 마 바 사";
-    // a
-    // DeleteSpace(test);
 
     /* 배치모드 (파일내용에 있는 명령어들 실행) */
     if (argc==2) {
@@ -229,72 +270,58 @@ int main(int argc, char *argv[]){
 
     while(1){
         /* 사용자에게 명령어 입력받음 */
+
+        //현재 경로 test 출력
+        printf("현재 path = %s\n", path);
         printf("tush> ");
         fgets(input, sizeof(input), stdin);
+        if (strlen(input)==1) continue;
         input[strlen(input)-1] = '\0';
         lastCharacter = getLastCharacter(input);
 
         /* 사용자의 명령어를 &기호로 나눔 */
         specialSplit(input, commands, "&");
-        
+
+        /* &기호를 기준으로 토큰을 나눴을때 명령어 갯수 카운팅*/
+        command_count = getArgsCount(commands);
+
         /* Args 확인 (테스트용) */
         // printf("command ");
         // printArgs(commands);
-
-        /* &기호를 기준으로 로 토큰을 나눴을때 명령어 갯수*/
-        command_count = getArgsCount(commands);
-
-        /* 명령어가 단일일 경우 (중간에 &기호가 없는경우) */
-        /* 내장명령어, 리다이렉션 모두 단일 명령어에서 실행 */
-		if ( (command_count==1) && (lastCharacter!='&')){
-
-			/* 리다이렉션 모드일경우 */
-			if ((redirection_mode=isRedirectionMode(commands[0]))){
-				redirectionProcessrun(commands[0], redirection_mode, NORMAL_MODE);
-			}
-
-			/* 리다이렉션이 아닐경우 */
-			else{
-				specialSplit(commands[0], args, " ");
-				/* 명령어가 내장 명령어인지 확인겸 실행하고, 아닐시 외부 명령어 실행*/
-				if (!internalCommand(args))
-					process_run(args, NORMAL_MODE);
-			}
-
-
-
-		}
-
-        /* 명령어가 단일이며 &로 끝나는 경우 */
-        else if ( (command_count==1) && (lastCharacter=='&')){
-            specialSplit(commands[0], args, " ");
-            process_run(args, BACKGROUND_MODE);
+        
+        /* 내장명령어 일시 실행하고 continue */
+        if(isInternalMode(commands)){
+            internalCommandRun(commands);
+            continue;
         }
 
-        /* command_count가 2 이상이며, input의 마지막 문자는 &기호가 아닌 경우 */
-        else if ((command_count>=2) && (lastCharacter!='&')){
-            for (i = 0; i < command_count; i++) {
-                specialSplit(commands[i], args, " ");
+        /* &기호로 나눠진만큼 명령어를 실행함 */
+        /* TODO 여기부터 시작 */
+        for (int i = 0; i < command_count; i++) {
+            
+            redirection_mode = isRedirectionMode(commands[i]);
+            
+            if (redirection_mode) redirectionSplit(commands[i], args, redirection_mode);
+            else specialSplit(commands[i], args, " ");
 
-                /* 마지막 명령어 이전까지는 BACKGROUND로 실행, 마지막 명령어는 일반으로 실행*/
-                if (i<command_count-1)
-                    process_run(args, BACKGROUND_MODE);
-                else
-                    process_run(args, NORMAL_MODE);
-            }
+            // test
+            // printf("실행직전 ");
+            // printArgs(args);
+
+            /* 명령어가 단일 명령어일 경우 */
+            /* & 기호로 끝나는경우 백그라운드, 아닌경우 일반실행 */
+            if (command_count == 1 && lastCharacter!='&') mode = NORMAL_MODE;
+            else if (command_count == 1 && lastCharacter=='&') mode = BACKGROUND_MODE;
+            /* 명령어가 단일이 아닌경우 (병렬모드) 백그라운드로 실행 */
+            else mode=BACKGROUND_MODE;
+
+            /* 마지막 실행 명령어가 & 기호로 끝나면 백그라운드, 아닌경우 일반으로 실행 */
+            if ((i+1) == command_count && lastCharacter!='&') mode = NORMAL_MODE;
+            else if ((i+1) == command_count && lastCharacter=='&') mode = BACKGROUND_MODE;
+
+            process_run(args, mode, redirection_mode);
+
         }
-
-        /* command_count가 2 이상이며, input의 마지막 문자는 &기호 일 경우 */
-        /* 모든 명령어를 백그라운드로 실행 */
-        else if ((command_count>=2) && (lastCharacter=='&')){
-            for (i = 0; i < command_count; i++) {
-                specialSplit(commands[i], args, " ");
-                process_run(args, BACKGROUND_MODE);
-            }
-        }
-
-
     }
-
     return 0;
 }
