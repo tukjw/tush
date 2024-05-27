@@ -115,29 +115,45 @@ void process_run(char **args, int mode, int redirection_mode){
         
         /* 자식 프로세스 */
         else if (pid==0){
-            
-            if (redirection_mode==REDIRECTION_OUTPUT||redirection_mode==REDIRECTION_APPEND){
-                /* OUTPUT REDIRECTION */
-                /* args[0] : 명령어 / args[1] : 파일이름 */
-
-                printf("output\n");
-                close(STDOUT_FILENO);
-                if (redirection_mode == REDIRECTION_OUTPUT)
-                    open(args[1], O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
-                else if (redirection_mode == REDIRECTION_APPEND)
-                    open(args[1], O_CREAT|O_WRONLY|O_APPEND, S_IRWXU);
-
-                specialSplit(args[0], t_args, " ");
-                execvp(t_args[0], t_args);
-                fputs("child process error\n", stderr);
-                exit(1);
-            }
-
-            else{
+           
+			/* 리다이렉션 모드 아닌경우 */
+			/* 일반적으로 프로그램 실행 */
+            if(!redirection_mode){
                 execvp(args[0], args);
                 fputs("child process error\n", stderr);
                 exit(1);
             }
+
+			/* 리다이렉션 경우 */
+            /* args[0] : 명령어 / args[1] : 파일이름 */
+			else{
+
+				/* 출력 리다이렉션 */
+				if (redirection_mode == REDIRECTION_OUTPUT){
+						close(STDOUT_FILENO);
+						open(args[1], O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+				}
+				else if (redirection_mode == REDIRECTION_APPEND){
+						close(STDOUT_FILENO);
+						open(args[1], O_CREAT|O_WRONLY|O_APPEND, S_IRWXU);
+				}		
+				
+
+				/* 입력 리다이렉션 */
+				else if (redirection_mode==REDIRECTION_INPUT)
+				{
+					printf("input\n");
+					close(STDIN_FILENO);
+					open(args[1], O_RDONLY);
+				}
+				
+				/* 명령어 실행 */
+				specialSplit(args[0], t_args, " ");
+				execvp(t_args[0], t_args);
+				fputs("child process error\n", stderr);
+				exit(1);
+			}
+			
         }
 
         /* 부모 프로세스 */
@@ -146,7 +162,7 @@ void process_run(char **args, int mode, int redirection_mode){
                 printf("child process PID : %d\n", pid);
             }
             else{
-                /* 백그라운드모드가 아니면 자식 프로세스가 종료될때까지 wait함 */
+                /* 백그라운드 모드가 아니면 자식 프로세스가 종료될때까지 wait함 */
                 waitpid(pid, &status, 0);
             }
         }
@@ -297,6 +313,7 @@ int main(int argc, char *argv[]){
 
         /* &기호로 나눠진만큼 명령어를 실행함 */
         /* TODO 여기부터 시작 */
+
         for (int i = 0; i < command_count; i++) {
             
             redirection_mode = isRedirectionMode(commands[i]);
