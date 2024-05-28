@@ -59,6 +59,10 @@ int main(int argc, char *argv[]){
     char *args[MAX_ARGS];
     int i;
 
+    /* 쉘 실행 전에 기본 path를 /bin으로 설정 */
+	paths[0] = strdup("/bin");
+	paths[1] = NULL;
+
     if (argc==2) {
         if (!strcmp("-d", argv[1])){
             debug_flag = 1;
@@ -76,14 +80,10 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-	/* 쉘 실행 전에 기본 path를 /bin으로 설정 */
-	paths[0] = strdup("/bin");
-	paths[1] = NULL;
-
     while(1){
         /* 사용자에게 명령어 입력받음 */
 
-		//printArgs(paths, "현재 path : ");
+		printArgs(paths, "현재 path : ");
         printf("tush> ");
         fgets(input, sizeof(input), stdin);
         if (strlen(input)==1) continue;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
         command_count = getArgsCount(commands);
 
         /* Args 확인 (테스트용) */
-        printArgs(commands, "\"&\" 기준으로 split 결과 : ");
+        //printArgs(commands, "\"&\" 기준으로 split 결과 : ");
 
         /* &기호로 나눠진만큼 명령어를 실행함 */
         for (int i = 0; i < command_count; i++) {
