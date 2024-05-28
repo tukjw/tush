@@ -235,24 +235,9 @@ void specialSplit(char *input, char **commands, char *special){
 void process_run(char **args, int mode, int redirection_mode){
     int status;
     char *t_args[MAX_ARGS];
-
 	int path_index;
 	char temp_path[100];
 	char *pt;
-	
-	/* 프로그램 실행 전 path 설정 */
-	if((path_index = accessiblePathIndex(args[0])) == -1){
-		fputs("프로그램 실행 경로를 찾지 못하였습니다.\n", stderr);
-		return;
-	}
-
-	else{
-		pt = strdup(paths[path_index]);
-		snprintf(temp_path, sizeof(temp_path), "%s/%s", pt, args[0]);
-		args[0] = temp_path;
-		// printf("실행 될 path : %s\n", temp_path);
-        free(pt);
-	}
 
     pid_t pid = fork();
     if (pid < 0){
@@ -265,6 +250,19 @@ void process_run(char **args, int mode, int redirection_mode){
         /* 리다이렉션 모드 아닌경우 */
         /* 일반적으로 프로그램 실행 */
         if(!redirection_mode){
+            /* 프로그램 실행 전 path 설정 */
+            if((path_index = accessiblePathIndex(args[0])) == -1){
+                fputs("프로그램 실행 경로를 찾지 못하였습니다.\n", stderr);
+                return;
+            }
+
+            else{
+                pt = strdup(paths[path_index]);
+                snprintf(temp_path, sizeof(temp_path), "%s/%s", pt, args[0]);
+                args[0] = temp_path;
+                // printf("실행 될 path : %s\n", temp_path);
+                free(pt);
+            }
             printArgs(args, "실행 args : ");
             execvp(args[0], args);
             error_handling("child process run error");
@@ -297,6 +295,21 @@ void process_run(char **args, int mode, int redirection_mode){
             
             /* 명령어 실행 */
             specialSplit(args[0], t_args, " ");
+
+            /* 프로그램 실행 전 path 설정 */
+            if((path_index = accessiblePathIndex(t_args[0])) == -1){
+                fputs("프로그램 실행 경로를 찾지 못하였습니다.\n", stderr);
+                return;
+            }
+
+            else{
+                pt = strdup(paths[path_index]);
+                snprintf(temp_path, sizeof(temp_path), "%s/%s", pt, t_args[0]);
+                t_args[0] = temp_path;
+                // printf("실행 될 path : %s\n", temp_path);
+                free(pt);
+            }
+
             printArgs(t_args, "실행 args : ");
             execvp(t_args[0], t_args);
             error_handling("child process run error");
