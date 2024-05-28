@@ -8,11 +8,14 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
-/* path, 입력 리다이렉션 남음 */
+/* TODO */
+/* path에 맞춰 실행하는거 */
+/* 문자열 주고받을때 strdup로할곳 고치고, free하는것도 추가 */
 
 /* 최대 글자 수, 최대 명령어 갯수 설정 */
 #define BUF_SIZE 400
 #define MAX_ARGS 15
+#define MAX_PATHS 100
 
 #define NORMAL_MODE 1
 #define BACKGROUND_MODE 2
@@ -24,14 +27,29 @@
 #define REDIRECTION_OUTPUT 2
 #define REDIRECTION_APPEND 3
 
+
+/* default path는 /bin으로 설정 */
+char *paths[MAX_PATHS] = { "/bin", NULL };
+
+/* 테스트 하고싶을땐 실행할때 -d 붙이고 실행해야 printArgs 보임 */
+int debug_flag = 0;
+
 /* 테스트용 Args프린트하기 */
-void printArgs(char**args){
-    printf("args : [");
-    int i;
-    for(i=0;args[i]!=NULL;i++){
-        printf("\"%s\", ", args[i]);
+void printArgs(char**args, char* name){
+    if (debug_flag){
+        printf("%s : [", name);
+        int i;
+        for(i=0;args[i]!=NULL;i++){
+            printf("\"%s\", ", args[i]);
+        }
+        printf("NULL]\n");
     }
-    printf("NULL]\n");
+}
+
+void error_handling(char *message){
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
 }
 
 /* args의 갯수 (NULL까지 몇개 있는지 확인하기 위함) */
@@ -107,10 +125,9 @@ void process_run(char **args, int mode, int redirection_mode){
         int status;
 
         char *t_args[MAX_ARGS];
-        char *tt_args[MAX_ARGS];
 
         if (pid < 0){
-            fputs("fork 에러 발생\n", stderr);
+            fputs("fork error\n", stderr);
         }
         
         /* 자식 프로세스 */
@@ -120,38 +137,38 @@ void process_run(char **args, int mode, int redirection_mode){
 			/* 일반적으로 프로그램 실행 */
             if(!redirection_mode){
                 execvp(args[0], args);
-                fputs("child process error\n", stderr);
-                exit(1);
+                error_handling("child process run error");
             }
 
-			/* 리다이렉션 경우 */
+			/* 리다이렉션 경우 (OSTEP 교재 참고) */
             /* args[0] : 명령어 / args[1] : 파일이름 */
 			else{
 
 				/* 출력 리다이렉션 */
 				if (redirection_mode == REDIRECTION_OUTPUT){
 						close(STDOUT_FILENO);
-						open(args[1], O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+						if (open(args[1], O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU) < 0)
+                            error_handling("open error");
 				}
 				else if (redirection_mode == REDIRECTION_APPEND){
 						close(STDOUT_FILENO);
-						open(args[1], O_CREAT|O_WRONLY|O_APPEND, S_IRWXU);
+						if(open(args[1], O_CREAT|O_WRONLY|O_APPEND, S_IRWXU) < 0)
+                            error_handling("open error");
 				}		
 				
 
 				/* 입력 리다이렉션 */
 				else if (redirection_mode==REDIRECTION_INPUT)
 				{
-					printf("input\n");
 					close(STDIN_FILENO);
-					open(args[1], O_RDONLY);
+					if(open(args[1], O_RDONLY))
+                        error_handling("open error");
 				}
 				
 				/* 명령어 실행 */
 				specialSplit(args[0], t_args, " ");
 				execvp(t_args[0], t_args);
-				fputs("child process error\n", stderr);
-				exit(1);
+                error_handling("child process run error");
 			}
 			
         }
@@ -198,17 +215,26 @@ void redirectionSplit(char *input, char **args, int redirection_mode){
     args[1] = trim(args[1]);
     args[2] = NULL;
     
-    printArgs(args);
+    printArgs(args, "redirection split : ");
+}
+
+/* 전역변수 paths의 path를 설정함*/
+void changePath(char **args){
+    int i;
+    for(i=1;args[i]!=NULL;i++){
+        paths[i-1] = strdup(args[i]);
+    }
+    paths[i-1] = NULL;
+    printArgs(paths, "changePath 후 결과 : ");
+
 }
 
 /* 내장명령어 인지 확인 */
 int isInternalMode(char **args){
     char *internalCommands[3] = {"cd", "exit", "path"};
-
     for(int i=0;i<3;i++){
         if (!strcmp(args[0], internalCommands[i])) return 1;
     }
-
     return 0;
 }
 
@@ -227,13 +253,15 @@ void internalCommandRun(char **args){
 
     // TODO path 내장명령어 만들기
     else if(!strcmp(args[0], "path")){
-        
+        changePath(args);
+        printArgs(args, "path split : ");
     }
 }
 
+/* 배치모드 (메모장에 있는 명령어들을 \n 기준으로 분리해서 실행)*/
 void batchMode(char **argv){
     int fd;
-    char input[BUF_SIZE];
+    char input[BUF_SIZE * 10];
     int str_len;
     char *commands[BUF_SIZE];
     int command_count;
@@ -241,11 +269,9 @@ void batchMode(char **argv){
     int i;
 
     fd = open(argv[1], O_RDONLY);
-
-    if(fd<0) {
-        fprintf(stderr, "\"%s\" open error\n", argv[1]);
-        exit(1);
-    }
+    
+    if (fd < 0)
+        error_handling("open error");
 
     str_len = read(fd, input, sizeof(input));
     input[str_len]=0;
@@ -257,6 +283,8 @@ void batchMode(char **argv){
         // printArgs(args);
         process_run(args, NORMAL_MODE, 0);
     }
+
+    close(fd);
 }
 
 int main(int argc, char *argv[]){
@@ -264,7 +292,6 @@ int main(int argc, char *argv[]){
     char *commands[BUF_SIZE];
     int command_count;
     char *token;
-    char path[BUF_SIZE] = "/bin";
     int mode=0;
     int redirection_mode=0;
     int internal_mode = 0;
@@ -273,10 +300,16 @@ int main(int argc, char *argv[]){
     char *args[MAX_ARGS];
     int i;
 
-    /* 배치모드 (파일내용에 있는 명령어들 실행) */
     if (argc==2) {
-        batchMode(argv);
-        exit(1);
+        if (!strcmp("-d", argv[1])){
+            debug_flag = 1;
+        }
+
+        /* 배치모드 (파일내용에 있는 명령어들 실행) */
+        else{
+            batchMode(argv);
+            exit(1);
+        }
     }
 
     else if (argc > 2){
@@ -288,7 +321,7 @@ int main(int argc, char *argv[]){
         /* 사용자에게 명령어 입력받음 */
 
         //현재 경로 test 출력
-        printf("현재 path = %s\n", path);
+		printArgs(paths, "현재 path : ");
         printf("tush> ");
         fgets(input, sizeof(input), stdin);
         if (strlen(input)==1) continue;
@@ -304,22 +337,22 @@ int main(int argc, char *argv[]){
         /* Args 확인 (테스트용) */
         // printf("command ");
         // printArgs(commands);
-        
-        /* 내장명령어 일시 실행하고 continue */
-        if(isInternalMode(commands)){
-            internalCommandRun(commands);
-            continue;
-        }
 
         /* &기호로 나눠진만큼 명령어를 실행함 */
-        /* TODO 여기부터 시작 */
 
         for (int i = 0; i < command_count; i++) {
             
+            /* 리다이렉션 모드인지 확인 */
             redirection_mode = isRedirectionMode(commands[i]);
-            
             if (redirection_mode) redirectionSplit(commands[i], args, redirection_mode);
+
             else specialSplit(commands[i], args, " ");
+
+            /* 내장명령어 일시 내장명령어 실행하고 continue */
+            if(isInternalMode(args)){
+                internalCommandRun(args);
+                continue;
+            }
 
             // test
             // printf("실행직전 ");
