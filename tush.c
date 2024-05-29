@@ -23,22 +23,29 @@
 #define REDIRECTION_OUTPUT 2
 #define REDIRECTION_APPEND 3
 
-void printArgs(char**args, char* name);
-int accessiblePathIndex(char *command);
 void error_handling(char *message);
+
+void printArgs(char**args, char* name);
 int getArgsCount(char **args);
 char getLastCharacter(char* str);
+
 char* trim_left(char* str);
 char* trim_right(char* str);
 char* trim(char* str);
+
 void specialSplit(char *input, char **commands, char *special);
+int accessiblePathIndex(char *command);
 void process_run(char **args, int mode, int redirection_mode);
-int isRedirectionMode(char *input);
-void redirectionSplit(char *input, char **args, int redirection_mode);
-void changePath(char **args);
+
 int isInternalMode(char **args);
 void internalCommandRun(char **args);
+void changePath(char **args);
+
+int isRedirectionMode(char *input);
+void redirectionSplit(char *input, char **args, int redirection_mode);
+
 void batchMode(char **argv);
+
 
 /* path를 담는 배열 */
 char *paths[MAX_PATHS] = { NULL };
