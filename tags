@@ -1,0 +1,25 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+accessiblePathIndex	runcommand.c	/^int accessiblePathIndex(char *command){$/;"	f
+batchMode	runcommand.c	/^void batchMode(char **argv){$/;"	f
+changePath	internalcommand.c	/^void changePath(char **args){$/;"	f
+debug_flag	tush.c	/^int debug_flag = 0;$/;"	v
+error_handling	tush.c	/^void error_handling(char *message){$/;"	f
+getArgsCount	inarg.c	/^int getArgsCount(char **args){$/;"	f
+getLastCharacter	inarg.c	/^char getLastCharacter(char* str){$/;"	f
+internalCommandRun	internalcommand.c	/^void internalCommandRun(char **args){$/;"	f
+isInternalMode	internalcommand.c	/^int isInternalMode(char **args){$/;"	f
+isRedirectionMode	runcommand.c	/^int isRedirectionMode(char *input){$/;"	f
+main	tush.c	/^int main(int argc, char *argv[]){$/;"	f
+paths	tush.c	/^char *paths[MAX_PATHS] = { NULL };$/;"	v
+printArgs	tush.c	/^void printArgs(char**args, char* name){$/;"	f
+process_run	runcommand.c	/^void process_run(char **args, int mode, int redirection_mode){$/;"	f
+redirectionSplit	runcommand.c	/^void redirectionSplit(char *input, char **args, int redirection_mode){$/;"	f
+specialSplit	inarg.c	/^void specialSplit(char *input, char **commands, char *special){$/;"	f
+trim	inarg.c	/^char* trim(char* str) {$/;"	f
+trim_left	inarg.c	/^char* trim_left(char* str) {$/;"	f
+trim_right	inarg.c	/^char* trim_right(char* str) {$/;"	f

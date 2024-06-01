@@ -1,23 +1,9 @@
-# 제목
+# [tush](https://github.com/tukjw/tush)(tukorea shell)
 
-## 소제목
+## 사용법
 
-1. 테스트
-2. 테스트
+1. make를 입력하여 컴파일한다.
+2. ./tush 를 입력하여 실행한다.
+3. 디버그모드를 이용하고싶다면 -d 옵션을 붙여 실행한다.
 
-## 소제목 2
-
-- **테스**
-- 테스트
-
----
-
-> 문구
->가나다라
-
-*** 
-
-[tush](https://github.com/tukjw/tush)
-
-
-```printf("README.md 테스트중\n");```
+## 작동범위
