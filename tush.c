@@ -53,7 +53,7 @@ int main(int argc, char *argv[]){
         command_count = getArgsCount(commands);
 
         /* Args 확인 (테스트용) */
-        //printArgs(commands, "\"&\" 기준으로 split 결과 : ");
+        printArgs(commands, "\"&\" 기준으로 split 결과 : ");
 
         /* &기호로 나눠진만큼 명령어를 실행함 */
         for (int i = 0; i < command_count; i++) {
