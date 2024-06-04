@@ -39,7 +39,7 @@ int main(int argc, char *argv[]){
 
     while(1){
         /* 사용자에게 명령어 입력받음 */
-		printArgs(paths, "현재 path : ");
+	//printArgs(paths, "현재 path : ");
         printf("tush> ");
         fgets(input, sizeof(input), stdin);
         if (strlen(input)==1) continue;
