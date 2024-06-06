@@ -1,5 +1,8 @@
 # [tush](https://github.com/tukjw/tush) (tukorea shell)
 
+## 24.06.06 update
+- 내장명령어 cd 실행 시 인자가 없거나 틸드(~) 일 경우 홈 디렉토리로 이동
+
 ## 개요
 
 tush는 [ostep-projects의 processes-shell](https://github.com/remzi-arpacidusseau/ostep-projects/tree/master/processes-shell)에 있는 요구사항을 충족시키는 간단한 쉘이다.
